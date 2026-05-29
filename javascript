@@ -1,16 +1,8 @@
-// =====================================================
-//  BudgetBalancer — script.js
-//  Team BYTEX | Event Budget Balancing System
-// =====================================================
-
-
-// ---- Data ----
 var sponsors = [];
 var expenses = [];
 var sponsorIdCounter = 1;
 var expenseIdCounter = 1;
 
-// ---- Theme ----
 function toggleTheme() {
     var body = document.body;
     if (body.classList.contains('dark')) {
@@ -21,7 +13,6 @@ function toggleTheme() {
         body.classList.add('dark');
     }
 }
-
 // ---- Page Navigation ----
 function showBalancerPage() {
     document.getElementById('landingPage').classList.add('hidden');
@@ -53,6 +44,7 @@ function addSponsor() {
     }
 
     sponsors.push({ id: sponsorIdCounter++, name: name, amount: amount });
+    localStorage.setItem('sponsors',JSON.stringify(sponsors));
     nameInput.value   = '';
     amountInput.value = '';
     renderSponsorList();
@@ -76,6 +68,7 @@ function addExpense() {
     }
 
     expenses.push({ id: expenseIdCounter++, name: name, amount: amount });
+    localStorage.setItem('expenses',JSON.stringify(expenses));
     nameInput.value   = '';
     amountInput.value = '';
     renderExpenseList();
@@ -183,6 +176,8 @@ function calculate() {
     setTimeout(function() {
         document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
+    document.getElementById('chartSection').classList.remove('hidden');
+    renderChart();
 }
 
 // =====================================================
@@ -301,6 +296,89 @@ function renderTransactions(transactions) {
     }
     container.innerHTML = html;
 }
+function downloadReport() {
+
+    // Get totals
+    var totalContrib = getTotalContrib();
+    var totalExpenses = getTotalExpenses();
+
+    // Create report text
+    var report = '';
+    
+    report += '===== EVENT BUDGET REPORT =====\n\n';
+    report+='Generated on: '+ new Date().toLocaleDateString()+ '\n\n';
+
+    report += 'Total Contribution: ₹' + totalContrib + '\n';
+    report += 'Total Expenses: ₹' + totalExpenses + '\n\n';
+
+    report += '--- Sponsors ---\n';
+
+    for (var i = 0; i < sponsors.length; i++) {
+        report += sponsors[i].name + ' : ₹' + sponsors[i].amount + '\n';
+    }
+
+    report += '\n--- Expenses ---\n';
+
+    for (var i = 0; i < expenses.length; i++) {
+        report += expenses[i].name + ' : ₹' + expenses[i].amount + '\n';
+    }
+
+    // Create downloadable file
+    var blob = new Blob([report], { type: 'text/plain' });
+
+    // Create temporary link
+    var link = document.createElement('a');//anchor element
+
+    // Generate URL for file
+    link.href = URL.createObjectURL(blob);
+
+    // File name
+    link.download = 'BudgetReport.txt';
+
+    // Trigger download
+    link.click();
+}
+
+var contributionChart;
+
+function renderChart() {
+
+    // Get sponsor names
+    var labels = [];
+
+    // Get contribution amounts
+    var data = [];
+
+    for (var i = 0; i < sponsors.length; i++) {
+        labels.push(sponsors[i].name);
+        data.push(sponsors[i].amount);
+    }
+
+    // Get canvas
+    var ctx = document.getElementById('contributionChart');
+
+    // Destroy old chart before creating new one
+    if (contributionChart) {
+        contributionChart.destroy();
+    }
+
+    // Create chart
+    contributionChart = new Chart(ctx, {
+        type: 'pie',
+
+        data: {
+            labels: labels,
+
+            datasets: [{
+                data: data
+            }]
+        },
+
+        options: {
+            responsive: false
+        }
+    });
+}
 
 // ---- RESET ----
 function resetAll() {
@@ -318,6 +396,9 @@ function resetAll() {
     document.getElementById('transactionList').innerHTML = '';
 
     showToast('All data cleared.');
+    localStorage.removeItem('sponsors');
+    localStorage.removeItem('expenses');
+
 }
 
 // ---- HELPERS ----
@@ -353,9 +434,19 @@ function showToast(message) {
         toast.classList.remove('show');
     }, 2600);
 }
-
-// ---- Enter key navigation ----
 document.addEventListener('DOMContentLoaded', function() {
+    var savedSponsors=localStorage.getItem('sponsors');
+    if(savedSponsors){
+        sponsors=JSON.parse(savedSponsors);
+        renderSponsorList();
+    }
+    var savedExpenses=localStorage.getItem('expenses');
+    if(savedExpenses){
+        expenses=JSON.parse(savedExpenses);
+        renderExpenseList();
+    }
+
+
     document.getElementById('sponsorName').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') document.getElementById('sponsorAmount').focus();
     });
